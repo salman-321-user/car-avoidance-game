@@ -1,102 +1,198 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { FaCar, FaGoogle } from 'react-icons/fa';
+import { FaCar, FaGoogle, FaTrophy, FaPlay, FaUsers, FaCrown, FaFire, FaStar, FaArrowRight, FaRoad, FaKeyboard, FaGamepad } from 'react-icons/fa';
 
 const WelcomeScreen = () => {
   const navigate = useNavigate();
   const { currentUser, userProfile, loginWithGoogle } = useAuth();
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   useEffect(() => {
     if (currentUser) {
-      // Check if user already has a profile
       if (userProfile && userProfile.displayName) {
-        // User has profile → go to game
         navigate('/game');
       } else {
-        // User doesn't have profile → go to setup
         navigate('/profile-setup');
       }
     }
   }, [currentUser, userProfile, navigate]);
 
   const handleGoogleLogin = async () => {
+    setIsLoggingIn(true);
     try {
       await loginWithGoogle();
-      // Navigation will be handled by the useEffect above
     } catch (error) {
       console.error('Login failed:', error);
+      setIsLoggingIn(false);
     }
   };
 
-  return (
-    <div className="h-screen overflow-hidden flex flex-col items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, y: -50 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        className="text-center max-w-2xl"
-      >
-        <motion.div
-          animate={{ y: [0, -10, 0] }}
-          transition={{ repeat: Infinity, duration: 2 }}
-          className="mb-4"
-        >
-          <FaCar className="text-5xl md:text-6xl text-blue-500 mx-auto" />
-        </motion.div>
-        
-        <h1 className="text-3xl md:text-4xl font-bold mb-3 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
-          Car Avoidance Challenge
-        </h1>
-        
-        <p className="text-lg text-gray-300 mb-6">
-          Dodge the traffic, beat your high score!
-        </p>
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1, delayChildren: 0.2 }
+    }
+  };
 
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: { type: "spring", stiffness: 100, damping: 15 }
+    }
+  };
+
+  const floatAnimation = {
+    y: [0, -10, 0],
+    transition: { duration: 3, repeat: Infinity, ease: "easeInOut" }
+  };
+
+  return (
+    <div className="h-screen overflow-y-auto bg-gradient-to-b from-gray-900 via-black to-gray-900">
+
+      {/* Background Elements - Fixed (doesn't scroll) */}
+      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-0 w-full h-1/3 bg-gradient-to-b from-blue-500/5 to-transparent"></div>
+        <div className="absolute bottom-0 right-0 w-full h-1/3 bg-gradient-to-t from-purple-500/5 to-transparent"></div>
+
+        {[...Array(5)].map((_, i) => (
+          <div
+            key={`line-${i}`}
+            className="absolute h-[1px] w-32 bg-yellow-400/20"
+            style={{
+              left: `${(i * 25) % 100}%`,
+              top: `${20 + (i * 15)}%`,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Main Content (Scrollable) */}
+      <div className="relative w-full px-4 py-8 md:px-8 min-h-full">
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5, duration: 1 }}
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="w-full max-w-4xl mx-auto pb-32"
         >
-          <div className="bg-gray-800/50 backdrop-blur-lg rounded-xl p-4 md:p-6 mb-6 shadow-lg border border-gray-700">
-            <h2 className="text-xl font-bold mb-3 text-blue-400">How to Play</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-              <div className="bg-gray-900/50 p-3 rounded-lg">
-                <div className="text-blue-400 font-bold mb-1">← → Move</div>
-                <p className="text-gray-400 text-xs">Use arrow keys to dodge cars</p>
+
+          {/* HERO */}
+          <div className="text-center mb-6 md:mb-8 pt-4">
+            <motion.div animate={floatAnimation} className="inline-block mb-6">
+              <div className="relative">
+                <FaCar className="text-5xl md:text-6xl text-blue-500 mx-auto" />
+                <div className="absolute -top-1 -right-1">
+                  <FaFire className="text-lg text-orange-500" />
+                </div>
               </div>
-              <div className="bg-gray-900/50 p-3 rounded-lg">
-                <div className="text-yellow-400 font-bold mb-1">⏱️ Score</div>
-                <p className="text-gray-400 text-xs">1 point per second survived</p>
-              </div>
-              <div className="bg-gray-900/50 p-3 rounded-lg">
-                <div className="text-red-400 font-bold mb-1">🚀 Speed Up</div>
-                <p className="text-gray-400 text-xs">Level up every 30 seconds</p>
-              </div>
-            </div>
+            </motion.div>
+
+            <motion.h1 variants={itemVariants} className="text-3xl md:text-5xl font-black mb-4 bg-gradient-to-r from-blue-400 via-purple-500 to-cyan-400 bg-clip-text text-transparent">
+              CAR AVOIDANCE
+            </motion.h1>
+
+            <motion.h2 variants={itemVariants} className="text-xl md:text-2xl font-bold text-cyan-300 mb-2">
+              ULTIMATE CHALLENGE
+            </motion.h2>
+
+            <motion.p variants={itemVariants} className="text-lg text-gray-300 mb-8">
+              Dodge, Survive, Conquer the Leaderboard!
+            </motion.p>
+
+            <motion.div variants={itemVariants} className="mb-12">
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={handleGoogleLogin}
+                disabled={isLoggingIn}
+                className="group relative w-full max-w-md mx-auto"
+              >
+                <div className="relative flex items-center justify-center gap-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 px-6 py-4 md:py-5 rounded-xl border-2 border-white/10 shadow-lg transition-all duration-300">
+                  {isLoggingIn ? (
+                    <div className="flex items-center gap-3">
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      <span className="text-lg font-bold text-white">Starting Engine...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <FaGoogle className="text-xl text-white" />
+                      <span className="text-lg font-bold text-white">SIGN IN WITH GOOGLE</span>
+                      <FaArrowRight className="text-lg text-white group-hover:translate-x-1 transition-transform" />
+                    </>
+                  )}
+                </div>
+                <p className="text-gray-500 text-sm mt-4">
+                  Free to play • No downloads required
+                </p>
+              </motion.button>
+
+              {isLoggingIn && (
+                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-blue-400 mt-4 text-sm">
+                  Preparing your gaming experience...
+                </motion.p>
+              )}
+            </motion.div>
           </div>
 
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleGoogleLogin}
-            className="w-full max-w-sm mx-auto flex items-center justify-center gap-3 bg-white text-gray-900 px-6 py-3 rounded-lg font-bold hover:bg-gray-200 transition-all duration-300 shadow-lg"
-          >
-            <FaGoogle className="text-red-500" />
-            Sign in with Google to Play
-          </motion.button>
-        </motion.div>
+          {/* FEATURES */}
+          <motion.div variants={itemVariants} className="mb-12">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">Why Players Love It</h2>
+              <p className="text-gray-400">Experience the thrill of high-speed avoidance</p>
+            </div>
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.7 }}
-          transition={{ delay: 1, duration: 1 }}
-          className="mt-6 text-gray-500 text-sm"
-        >
-          <p>Play now and compete on the global leaderboard!</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              {[
+                {
+                  icon: <FaTrophy className="text-2xl text-yellow-400" />,
+                  title: "Global Competition",
+                  desc: "Compete with players worldwide on the leaderboard",
+                  color: "bg-yellow-500/10"
+                },
+                {
+                  icon: <FaGamepad className="text-2xl text-blue-400" />,
+                  title: "Simple Controls",
+                  desc: "Easy to learn, hard to master",
+                  color: "bg-blue-500/10"
+                },
+                {
+                  icon: <FaUsers className="text-2xl text-green-400" />,
+                  title: "Community Driven",
+                  desc: "Join thousands of players",
+                  color: "bg-green-500/10"
+                },
+              ].map((feature, index) => (
+                <div key={index} className={`${feature.color} p-5 rounded-xl border border-gray-700/50`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-black/30 rounded-lg">{feature.icon}</div>
+                    <h3 className="text-lg font-bold text-white">{feature.title}</h3>
+                  </div>
+                  <p className="text-gray-300 text-sm">{feature.desc}</p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* FOOTER */}
+          <motion.div variants={itemVariants} className="pt-8 border-t border-gray-800/50 text-center">
+            <div className="flex items-center justify-center gap-4 mb-4">
+              <FaCar className="text-gray-500" />
+              <span className="text-gray-500">•</span>
+              <FaRoad className="text-gray-500" />
+              <span className="text-gray-500">•</span>
+              <FaTrophy className="text-gray-500" />
+            </div>
+            <p className="text-gray-600 text-sm">
+              Car Avoidance Challenge © {new Date().getFullYear()}
+            </p>
+          </motion.div>
+
         </motion.div>
-      </motion.div>
+      </div>
     </div>
   );
 };

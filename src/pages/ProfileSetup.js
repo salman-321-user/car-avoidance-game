@@ -1,4 +1,4 @@
-import { FaUser, FaCheck, FaTrash, FaUpload, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { FaUser, FaCheck, FaTrash, FaUpload, FaTimes, FaChevronLeft, FaChevronRight, FaSpinner } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -15,6 +15,7 @@ const ProfileSetup = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdated, setIsUpdated] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false); // New state for update loading
   const [currentEmojiPage, setCurrentEmojiPage] = useState(0);
   const fileInputRef = useRef(null);
 
@@ -197,6 +198,10 @@ const ProfileSetup = () => {
       return;
     }
 
+    if (isUpdating) return; // Prevent multiple clicks
+
+    setIsUpdating(true);
+
     try {
       // Use uploaded image if available, otherwise use selected emoji
       const photoURL = uploadedImage || selectedAvatar;
@@ -206,11 +211,15 @@ const ProfileSetup = () => {
         photoURL: photoURL,
       });
       setIsUpdated(true);
-      // Show success message
+      
+      // Show success message for 3 seconds
       setTimeout(() => setIsUpdated(false), 3000);
+      
     } catch (error) {
       console.error('Error updating profile:', error);
       alert('Failed to update profile. Please try again.');
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -265,6 +274,7 @@ const ProfileSetup = () => {
               : 'text-gray-600 cursor-not-allowed'
             }`}
           title={isFormComplete() ? "Close" : "Please complete profile first"}
+          disabled={isUpdating || isDeleting} // Disable when loading
         >
           ×
         </button>
@@ -282,13 +292,30 @@ const ProfileSetup = () => {
 
           {/* Scrollable Content Area */}
           <div className="flex-1 overflow-y-auto p-6">
+            {/* Success Message */}
             {isUpdated && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
                 className="mb-4 p-3 bg-green-900/30 border border-green-700 rounded-lg"
               >
                 <p className="text-green-400 text-sm font-bold">✓ Profile updated successfully!</p>
+              </motion.div>
+            )}
+
+            {/* Loading Overlay for Update */}
+            {isUpdating && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center"
+              >
+                <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 flex flex-col items-center gap-4">
+                  <FaSpinner className="text-3xl text-blue-400 animate-spin" />
+                  <p className="text-gray-300 font-medium">Updating profile...</p>
+                  <p className="text-xs text-gray-500">This may take a few seconds</p>
+                </div>
               </motion.div>
             )}
 
@@ -328,6 +355,7 @@ const ProfileSetup = () => {
                             onClick={removeUploadedImage}
                             className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 text-xs hover:bg-red-700"
                             title="Remove photo"
+                            disabled={isUpdating || isUploading}
                           >
                             <FaTimes />
                           </button>
@@ -338,7 +366,7 @@ const ProfileSetup = () => {
                         </span>
                       )}
                     </div>
-                    {isUploading && (
+                    {(isUploading || isUpdating) && (
                       <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
                         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
                       </div>
@@ -358,17 +386,28 @@ const ProfileSetup = () => {
                     accept="image/*"
                     className="hidden"
                     id="image-upload"
+                    disabled={isUpdating}
                   />
                   <motion.label
                     htmlFor="image-upload"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="flex items-center justify-center gap-2 w-full p-3 bg-gray-900 hover:bg-gray-800 border border-gray-700 rounded-lg cursor-pointer transition-all"
+                    className={`flex items-center justify-center gap-2 w-full p-3 border rounded-lg cursor-pointer transition-all ${isUpdating
+                        ? 'bg-gray-800 border-gray-600 cursor-not-allowed'
+                        : 'bg-gray-900 hover:bg-gray-800 border-gray-700'
+                      }`}
                   >
-                    <FaUpload className="text-blue-400" />
-                    <span className="text-sm font-medium">
-                      {isUploading ? 'Uploading...' : 'Upload Photo'}
-                    </span>
+                    {isUploading ? (
+                      <>
+                        <FaSpinner className="text-blue-400 animate-spin" />
+                        <span className="text-sm font-medium">Uploading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FaUpload className="text-blue-400" />
+                        <span className="text-sm font-medium">Upload Photo</span>
+                      </>
+                    )}
                   </motion.label>
                   <p className="text-xs text-gray-500 text-center mt-1">
                     Upload any image (will be compressed to max 500KB)
@@ -398,9 +437,9 @@ const ProfileSetup = () => {
                           className={`text-2xl p-3 rounded-lg transition-all ${isSelected
                               ? 'bg-blue-600 ring-2 ring-blue-400 transform scale-105'
                               : 'bg-gray-900 hover:bg-gray-700'
-                            } ${uploadedImage ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
+                            } ${uploadedImage || isUpdating ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
                             }`}
-                          disabled={!!uploadedImage}
+                          disabled={!!uploadedImage || isUpdating}
                         >
                           {avatar}
                         </motion.button>
@@ -414,8 +453,8 @@ const ProfileSetup = () => {
                       <button
                         type="button"
                         onClick={prevEmojiPage}
-                        disabled={currentEmojiPage === 0}
-                        className={`p-2 rounded-lg ${currentEmojiPage === 0
+                        disabled={currentEmojiPage === 0 || isUpdating}
+                        className={`p-2 rounded-lg ${currentEmojiPage === 0 || isUpdating
                             ? 'text-gray-600 cursor-not-allowed'
                             : 'text-gray-300 hover:text-white hover:bg-gray-800'
                           }`}
@@ -429,10 +468,11 @@ const ProfileSetup = () => {
                             key={index}
                             type="button"
                             onClick={() => setCurrentEmojiPage(index)}
+                            disabled={isUpdating}
                             className={`w-2 h-2 rounded-full ${currentEmojiPage === index
                                 ? 'bg-blue-500'
                                 : 'bg-gray-600 hover:bg-gray-500'
-                              }`}
+                              } ${isUpdating ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                           />
                         ))}
                       </div>
@@ -440,8 +480,8 @@ const ProfileSetup = () => {
                       <button
                         type="button"
                         onClick={nextEmojiPage}
-                        disabled={currentEmojiPage === totalPages - 1}
-                        className={`p-2 rounded-lg ${currentEmojiPage === totalPages - 1
+                        disabled={currentEmojiPage === totalPages - 1 || isUpdating}
+                        className={`p-2 rounded-lg ${currentEmojiPage === totalPages - 1 || isUpdating
                             ? 'text-gray-600 cursor-not-allowed'
                             : 'text-gray-300 hover:text-white hover:bg-gray-800'
                           }`}
@@ -469,9 +509,13 @@ const ProfileSetup = () => {
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="Enter your game name"
-                  className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg focus:border-blue-500 focus:outline-none"
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none ${isUpdating
+                      ? 'bg-gray-800 border-gray-600 text-gray-400 cursor-not-allowed'
+                      : 'bg-gray-900 border-gray-700 focus:border-blue-500'
+                    }`}
                   maxLength={15}
                   autoFocus
+                  disabled={isUpdating}
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Max 15 characters
@@ -484,11 +528,23 @@ const ProfileSetup = () => {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   type="submit"
-                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90 px-4 py-3 rounded-lg font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={isUploading || !isFormComplete()}
+                  className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-bold transition-all ${isUpdating || isUploading || !isFormComplete()
+                      ? 'bg-gradient-to-r from-blue-800 to-purple-800 opacity-50 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90'
+                    }`}
+                  disabled={isUploading || !isFormComplete() || isUpdating}
                 >
-                  <FaCheck />
-                  {isFormComplete() ? 'Update Profile' : 'Complete Profile First'}
+                  {isUpdating ? (
+                    <>
+                      <FaSpinner className="animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <FaCheck />
+                      {isFormComplete() ? 'Update Profile' : 'Complete Profile First'}
+                    </>
+                  )}
                 </motion.button>
 
                 <motion.button
@@ -496,11 +552,23 @@ const ProfileSetup = () => {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-red-600 to-red-800 hover:opacity-90 px-4 py-3 rounded-lg font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={isDeleting || isUploading}
+                  className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-bold transition-all ${isDeleting || isUploading || isUpdating
+                      ? 'bg-gradient-to-r from-red-800 to-red-900 opacity-50 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-red-600 to-red-800 hover:opacity-90'
+                    }`}
+                  disabled={isDeleting || isUploading || isUpdating}
                 >
-                  <FaTrash />
-                  {isDeleting ? 'Deleting...' : 'Delete Account'}
+                  {isDeleting ? (
+                    <>
+                      <FaSpinner className="animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <FaTrash />
+                      Delete Account
+                    </>
+                  )}
                 </motion.button>
               </div>
             </form>
@@ -534,14 +602,21 @@ const ProfileSetup = () => {
               <div className="flex gap-3">
                 <button
                   onClick={handleDeleteAccount}
-                  className="flex-1 bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-bold"
+                  className="flex-1 bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-bold flex items-center justify-center gap-2 disabled:opacity-50"
                   disabled={isDeleting}
                 >
-                  {isDeleting ? 'Deleting...' : 'Yes, Delete'}
+                  {isDeleting ? (
+                    <>
+                      <FaSpinner className="animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    'Yes, Delete'
+                  )}
                 </button>
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
-                  className="flex-1 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg font-bold"
+                  className="flex-1 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg font-bold disabled:opacity-50"
                   disabled={isDeleting}
                 >
                   Cancel

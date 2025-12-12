@@ -24,11 +24,12 @@ const CAR_HEIGHT = 40;
 const GameCanvas = () => {
   const canvasRef = useRef(null);
   const { gameState, score, level, gameSpeed, updateScore, endGame } = useGame();
-  
+
   const [playerPosition, setPlayerPosition] = useState(Math.floor(ROAD_COLUMNS / 2));
   const [obstacles, setObstacles] = useState([]);
   const [lastSpawnTime, setLastSpawnTime] = useState(0);
   const [lastScoreTime, setLastScoreTime] = useState(Date.now());
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Load images
   const playerImg = useRef(new Image());
@@ -40,35 +41,85 @@ const GameCanvas = () => {
     return img;
   }));
 
-  // Initialize player position
+  // Initialize player position only when game starts from idle or game-over
   useEffect(() => {
-    setPlayerPosition(Math.floor(ROAD_COLUMNS / 2));
+    if ((gameState === 'playing' && !isInitialized) || gameState === 'idle') {
+      setPlayerPosition(Math.floor(ROAD_COLUMNS / 2));
+      setObstacles([]);
+      setIsInitialized(false);
+
+      if (gameState === 'playing') {
+        setIsInitialized(true);
+      }
+    }
   }, [gameState]);
 
-  // Handle keyboard controls
+  // Handle keyboard controls - IMPORTANT: This needs to capture ALL keyboard events
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (gameState !== 'playing') return;
-      if (e.key === 'ArrowLeft') setPlayerPosition(prev => Math.max(0, prev - 1));
-      else if (e.key === 'ArrowRight') setPlayerPosition(prev => Math.min(ROAD_COLUMNS - 1, prev + 1));
+      // Allow movement even when paused
+      if (gameState === 'playing' || gameState === 'paused') {
+        if (e.key === 'ArrowLeft') {
+          setPlayerPosition(prev => Math.max(0, prev - 1));
+          e.preventDefault(); // Prevent default browser behavior
+        } else if (e.key === 'ArrowRight') {
+          setPlayerPosition(prev => Math.min(ROAD_COLUMNS - 1, prev + 1));
+          e.preventDefault(); // Prevent default browser behavior
+        }
+      }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    
+    // Add event listener with capture phase to catch all events
+    window.addEventListener('keydown', handleKeyDown, true);
+    
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [gameState]);
 
-  // Spawn obstacles
+  // Spawn obstacles with dynamic rate based on level
   const spawnObstacle = useCallback(() => {
+    if (gameState !== 'playing') return; // Don't spawn when not playing
+
     const column = Math.floor(Math.random() * ROAD_COLUMNS);
     const typeIndex = Math.floor(Math.random() * OBSTACLE_CAR_IMAGES.length);
     const obstacle = {
       id: Date.now() + Math.random(),
       column,
       y: -CAR_HEIGHT,
-      speed: 2 + (level - 1) * 1.2,
+      speed: 2 + (level - 1) * 1.5, // Increased speed with level
       typeIndex
     };
     setObstacles(prev => [...prev, obstacle]);
-  }, [level]);
+
+    // Spawn multiple obstacles at higher levels
+    if (level >= 5) {
+      const secondColumn = Math.floor(Math.random() * ROAD_COLUMNS);
+      if (secondColumn !== column) { // Avoid spawning in same column
+        const secondObstacle = {
+          id: Date.now() + Math.random() + 1,
+          column: secondColumn,
+          y: -CAR_HEIGHT,
+          speed: 2 + (level - 1) * 1.5,
+          typeIndex: Math.floor(Math.random() * OBSTACLE_CAR_IMAGES.length)
+        };
+        setObstacles(prev => [...prev, secondObstacle]);
+      }
+    }
+
+    // Spawn even more at very high levels
+    if (level >= 8) {
+      const thirdColumn = Math.floor(Math.random() * ROAD_COLUMNS);
+      if (thirdColumn !== column) { // Avoid spawning in same column
+        const thirdObstacle = {
+          id: Date.now() + Math.random() + 2,
+          column: thirdColumn,
+          y: -CAR_HEIGHT * 1.5, // Slightly higher to create a train effect
+          speed: 2 + (level - 1) * 1.5,
+          typeIndex: Math.floor(Math.random() * OBSTACLE_CAR_IMAGES.length)
+        };
+        setObstacles(prev => [...prev, thirdObstacle]);
+      }
+    }
+  }, [level, gameState]);
 
   // Game update with collision
   const updateGame = useCallback(() => {
@@ -80,7 +131,14 @@ const GameCanvas = () => {
       setLastScoreTime(now);
     }
 
-    if (now - lastSpawnTime > 1200 / gameSpeed) {
+    // Dynamic spawn rate based on level
+    // Base spawn rate is 1200ms, reduced by level
+    // Higher levels = faster spawn rate
+    const baseSpawnRate = 1200;
+    const levelMultiplier = Math.max(0.3, 1 - (level - 1) * 0.08); // Level 1: 1.0, Level 10: ~0.28
+    const spawnRate = (baseSpawnRate * levelMultiplier) / gameSpeed;
+
+    if (now - lastSpawnTime > spawnRate) {
       spawnObstacle();
       setLastSpawnTime(now);
     }
@@ -93,32 +151,35 @@ const GameCanvas = () => {
     const playerTop = playerY - CAR_HEIGHT / 2;
     const playerBottom = playerY + CAR_HEIGHT / 2;
 
-    setObstacles(prev => 
-      prev.map(obs => ({ ...obs, y: obs.y + obs.speed * gameSpeed }))
-          .filter(obs => {
-            const obsX = obs.column * COLUMN_WIDTH + COLUMN_WIDTH / 2;
-            const obsY = obs.y;
-            const obsLeft = obsX - CAR_WIDTH / 2;
-            const obsRight = obsX + CAR_WIDTH / 2;
-            const obsTop = obsY - CAR_HEIGHT / 2;
-            const obsBottom = obsY + CAR_HEIGHT / 2;
+    setObstacles(prev =>
+      prev.map(obs => ({
+        ...obs,
+        y: obs.y + obs.speed * gameSpeed
+      }))
+        .filter(obs => {
+          const obsX = obs.column * COLUMN_WIDTH + COLUMN_WIDTH / 2;
+          const obsY = obs.y;
+          const obsLeft = obsX - CAR_WIDTH / 2;
+          const obsRight = obsX + CAR_WIDTH / 2;
+          const obsTop = obsY - CAR_HEIGHT / 2;
+          const obsBottom = obsY + CAR_HEIGHT / 2;
 
-            // Collision detection
-            const isHit =
-              playerLeft < obsRight &&
-              playerRight > obsLeft &&
-              playerTop < obsBottom &&
-              playerBottom > obsTop;
+          // Collision detection
+          const isHit =
+            playerLeft < obsRight &&
+            playerRight > obsLeft &&
+            playerTop < obsBottom &&
+            playerBottom > obsTop;
 
-            if (isHit) {
-              endGame();
-              return false;
-            }
+          if (isHit) {
+            endGame();
+            return false;
+          }
 
-            return obs.y < ROAD_HEIGHT + CAR_HEIGHT;
-          })
+          return obs.y < ROAD_HEIGHT + CAR_HEIGHT;
+        })
     );
-  }, [gameState, lastSpawnTime, lastScoreTime, score, gameSpeed, spawnObstacle, playerPosition, updateScore, endGame]);
+  }, [gameState, lastSpawnTime, lastScoreTime, score, gameSpeed, spawnObstacle, playerPosition, updateScore, endGame, level]);
 
   // Game loop
   useEffect(() => {
@@ -169,10 +230,10 @@ const GameCanvas = () => {
       ctx.stroke();
     }
 
-    // Motion lines
+    // Motion lines - Only animate when playing
     ctx.strokeStyle = '#fbbf24';
     ctx.lineWidth = 2;
-    const lineOffset = (Date.now() / 15) % 20;
+    const lineOffset = gameState === 'playing' ? (Date.now() / 15) % 20 : 0;
     for (let i = -20; i < ROAD_HEIGHT; i += 40) {
       const y = (i + lineOffset) % ROAD_HEIGHT;
       ctx.beginPath();
@@ -197,7 +258,8 @@ const GameCanvas = () => {
     ctx.strokeStyle = '#4b5563';
     ctx.lineWidth = 3;
     ctx.strokeRect(centeringOffset, 0, totalWidth, ROAD_HEIGHT);
-  }, [playerPosition, obstacles]);
+
+  }, [playerPosition, obstacles, gameState, level, gameSpeed]);
 
   return (
     <div className="h-full flex flex-col items-center justify-center">

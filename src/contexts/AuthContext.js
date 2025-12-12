@@ -6,7 +6,7 @@ import {
   deleteUser
 } from 'firebase/auth';
 import { auth, googleProvider } from '../firebase';
-import { doc, getDoc, setDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 const AuthContext = createContext();
@@ -71,13 +71,38 @@ export const AuthProvider = ({ children }) => {
     if (!currentUser) return;
     
     try {
+      // 1. Update user profile in 'users' collection
       await setDoc(doc(db, 'users', currentUser.uid), {
         ...userProfile,
         ...profileData,
         updatedAt: new Date().toISOString(),
       }, { merge: true });
       
+      // 2. Update avatar in 'scores' collection if user has a score document
+      try {
+        const scoreDocRef = doc(db, 'scores', currentUser.uid);
+        const scoreDoc = await getDoc(scoreDocRef);
+        
+        if (scoreDoc.exists()) {
+          // Update only the playerAvatar field in scores collection
+          await updateDoc(scoreDocRef, {
+            playerAvatar: profileData.photoURL || '',
+            // Also update playerName if it changed
+            ...(profileData.displayName && { 
+              playerName: profileData.displayName 
+            })
+          });
+          console.log("Score document avatar updated successfully");
+        }
+      } catch (error) {
+        console.error("Error updating score document avatar:", error);
+        // Don't throw error here - we don't want to fail the profile update
+        // if score update fails
+      }
+      
+      // 3. Update local state
       setUserProfile(prev => ({ ...prev, ...profileData }));
+      
     } catch (error) {
       console.error("Update profile error:", error);
       throw error;

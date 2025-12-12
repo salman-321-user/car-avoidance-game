@@ -7,6 +7,7 @@ const ControlButtons = ({ onLeft, onRight }) => {
       <motion.button
         whileTap={{ scale: 0.9 }}
         onTouchStart={onLeft}
+        onMouseDown={onLeft}
         className="p-6 bg-gray-800/80 backdrop-blur-lg rounded-full text-2xl hover:bg-gray-700 active:bg-gray-600"
       >
         ←
@@ -14,6 +15,7 @@ const ControlButtons = ({ onLeft, onRight }) => {
       <motion.button
         whileTap={{ scale: 0.9 }}
         onTouchStart={onRight}
+        onMouseDown={onRight}
         className="p-6 bg-gray-800/80 backdrop-blur-lg rounded-full text-2xl hover:bg-gray-700 active:bg-gray-600"
       >
         →

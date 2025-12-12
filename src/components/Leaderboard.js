@@ -12,6 +12,32 @@ import {
 const Leaderboard = () => {
   const { leaderboard } = useGame();
 
+  // Function to check if photoURL is a base64 image
+  const isBase64Image = (url) => {
+    return typeof url === 'string' && url.startsWith('data:image');
+  };
+
+  // Function to render profile avatar
+  const renderProfileAvatar = (avatar, rank) => {
+    if (!avatar) {
+      return '👤'; // Default emoji if no avatar
+    }
+
+    if (isBase64Image(avatar)) {
+      // If it's a base64 image, render as img tag
+      return (
+        <img 
+          src={avatar} 
+          alt="Profile" 
+          className="w-10 h-10 rounded-full object-cover"
+        />
+      );
+    } else {
+      // If it's an emoji, render as text
+      return avatar;
+    }
+  };
+
   const getRankStyle = (rank) => {
     switch(rank) {
       case 1:
@@ -26,7 +52,8 @@ const Leaderboard = () => {
           glow: 'shadow-[0_0_25px_rgba(0,0,0,0.9)]',
           effect: 'animate-pulse',
           playerTag: 'LEGEND',
-          tagColor: 'bg-gray-800 text-gray-200'
+          tagColor: 'bg-gray-800 text-gray-200',
+          avatarBorder: 'border-gray-500'
         };
       case 2:
         return {
@@ -39,7 +66,8 @@ const Leaderboard = () => {
           scoreText: 'text-blue-200 font-bold',
           glow: 'shadow-[0_0_20px_rgba(59,130,246,0.6)]',
           playerTag: 'ELITE',
-          tagColor: 'bg-blue-900/60 text-blue-200'
+          tagColor: 'bg-blue-900/60 text-blue-200',
+          avatarBorder: 'border-blue-400/50'
         };
       case 3:
         return {
@@ -52,7 +80,8 @@ const Leaderboard = () => {
           scoreText: 'text-red-200 font-bold',
           glow: 'shadow-[0_0_18px_rgba(239,68,68,0.5)]',
           playerTag: 'PRO',
-          tagColor: 'bg-red-900/60 text-red-200'
+          tagColor: 'bg-red-900/60 text-red-200',
+          avatarBorder: 'border-red-400/50'
         };
       case 4:
         return {
@@ -63,7 +92,8 @@ const Leaderboard = () => {
           rankText: 'text-emerald-100 font-bold',
           nameText: 'text-gray-200 font-bold',
           scoreText: 'text-emerald-200 font-bold',
-          glow: 'shadow-[0_0_16px_rgba(16,185,129,0.5)]'
+          glow: 'shadow-[0_0_16px_rgba(16,185,129,0.5)]',
+          avatarBorder: 'border-emerald-400/50'
         };
       case 5:
         return {
@@ -74,7 +104,8 @@ const Leaderboard = () => {
           rankText: 'text-purple-100 font-bold',
           nameText: 'text-gray-200 font-semibold',
           scoreText: 'text-purple-200 font-bold',
-          glow: 'shadow-[0_0_14px_rgba(168,85,247,0.4)]'
+          glow: 'shadow-[0_0_14px_rgba(168,85,247,0.4)]',
+          avatarBorder: 'border-purple-400/50'
         };
       case 6:
         return {
@@ -85,7 +116,8 @@ const Leaderboard = () => {
           rankText: 'text-yellow-100 font-bold',
           nameText: 'text-gray-200 font-semibold',
           scoreText: 'text-yellow-200 font-bold',
-          glow: 'shadow-[0_0_12px_rgba(234,179,8,0.4)]'
+          glow: 'shadow-[0_0_12px_rgba(234,179,8,0.4)]',
+          avatarBorder: 'border-yellow-400/50'
         };
       case 7:
         return {
@@ -96,7 +128,8 @@ const Leaderboard = () => {
           rankText: 'text-gray-100 font-bold',
           nameText: 'text-gray-300 font-semibold',
           scoreText: 'text-gray-200 font-bold',
-          glow: 'shadow-[0_0_10px_rgba(156,163,175,0.3)]'
+          glow: 'shadow-[0_0_10px_rgba(156,163,175,0.3)]',
+          avatarBorder: 'border-gray-300/50'
         };
       default:
         return {
@@ -107,7 +140,8 @@ const Leaderboard = () => {
           rankText: 'text-amber-100 font-bold',
           nameText: 'text-gray-400 font-medium',
           scoreText: 'text-amber-200 font-bold',
-          glow: ''
+          glow: '',
+          avatarBorder: 'border-amber-600/50'
         };
     }
   };
@@ -182,17 +216,8 @@ const Leaderboard = () => {
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   {/* Avatar */}
                   <div className="flex-shrink-0">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl border-2 ${
-                      rank === 1 ? 'border-gray-500' :
-                      rank === 2 ? 'border-blue-400/50' :
-                      rank === 3 ? 'border-red-400/50' :
-                      rank === 4 ? 'border-emerald-400/50' :
-                      rank === 5 ? 'border-purple-400/50' :
-                      rank === 6 ? 'border-yellow-400/50' :
-                      rank === 7 ? 'border-gray-300/50' :
-                      'border-amber-600/50'
-                    }`}>
-                      {player.playerAvatar || '👤'}
+                    <div className={`w-10 h-10 rounded-full overflow-hidden border-2 ${style.avatarBorder} flex items-center justify-center bg-gray-900`}>
+                      {renderProfileAvatar(player.playerAvatar, rank)}
                     </div>
                   </div>
 

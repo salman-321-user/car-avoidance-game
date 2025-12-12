@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,6 +12,7 @@ const GameScreen = () => {
   const navigate = useNavigate();
   const { userProfile } = useAuth();
   const { gameState, score, level, startGame, pauseGame, resumeGame } = useGame();
+  const [mobileDirection, setMobileDirection] = useState(null);
 
   // Handle keyboard controls
   useEffect(() => {
@@ -29,6 +30,68 @@ const GameScreen = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [gameState, pauseGame, resumeGame]);
 
+  // Function to check if photoURL is a base64 image
+  const isBase64Image = (url) => {
+    return typeof url === 'string' && url.startsWith('data:image');
+  };
+
+  // Function to render profile avatar
+  const renderProfileAvatar = () => {
+    if (!userProfile?.photoURL) {
+      return '👤'; // Default emoji if no photoURL
+    }
+
+    if (isBase64Image(userProfile.photoURL)) {
+      // If it's a base64 image, render as img tag
+      return (
+        <img 
+          src={userProfile.photoURL} 
+          alt="Profile" 
+          className="w-10 h-10 rounded-full object-cover"
+        />
+      );
+    } else {
+      // If it's an emoji, render as text
+      return userProfile.photoURL;
+    }
+  };
+
+  // Function to render profile name with proper display
+  const renderProfileName = () => {
+    const displayName = userProfile?.displayName || 'Anonymous';
+    return displayName.length > 15 ? `${displayName.slice(0, 15)}...` : displayName;
+  };
+
+  // Function to simulate keyboard events for mobile controls
+  const simulateKeyPress = (key) => {
+    // Create and dispatch a proper keyboard event
+    const event = new KeyboardEvent('keydown', {
+      key: key,
+      code: `Arrow${key === 'ArrowLeft' ? 'Left' : 'Right'}`,
+      keyCode: key === 'ArrowLeft' ? 37 : 39,
+      which: key === 'ArrowLeft' ? 37 : 39,
+      bubbles: true,
+      cancelable: true,
+      view: window
+    });
+    
+    window.dispatchEvent(event);
+    
+    // Also trigger a keyup event after a short delay for better responsiveness
+    setTimeout(() => {
+      const keyupEvent = new KeyboardEvent('keyup', {
+        key: key,
+        code: `Arrow${key === 'ArrowLeft' ? 'Left' : 'Right'}`,
+        keyCode: key === 'ArrowLeft' ? 37 : 39,
+        which: key === 'ArrowLeft' ? 37 : 39,
+        bubbles: true,
+        cancelable: true,
+        view: window
+      });
+      window.dispatchEvent(keyupEvent);
+    }, 100);
+  };
+
   return (
     <div className="h-screen overflow-y-auto bg-gray-900">
       {/* Main Container */}
@@ -44,21 +107,15 @@ const GameScreen = () => {
                   onClick={() => navigate('/profile-setup')}
                   className="flex items-center gap-2 px-3 py-1.5 bg-gray-900/80 rounded-lg hover:bg-gray-700/80 transition-colors"
                 >
-                  <span className="text-lg md:text-xl">{userProfile.photoURL}</span>
-                  <span className="text-sm md:text-base font-bold truncate max-w-[100px] md:max-w-[150px]">
-                    {userProfile.displayName}
+                  {/* Updated avatar display */}
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full overflow-hidden bg-gray-900 flex items-center justify-center text-lg border border-gray-600">
+                    {renderProfileAvatar()}
+                  </div>
+                  <span className="text-sm md:text-base font-bold">
+                    {renderProfileName()}
                   </span>
                 </motion.button>
               )}
-              
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={() => navigate('/')}
-                className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-700 to-indigo-700 rounded-lg hover:opacity-90"
-              >
-                <FaHome className="text-sm md:text-base" />
-                <span className="hidden md:inline text-sm font-semibold">HOME</span>
-              </motion.button>
             </div>
 
             {/* Game Stats */}
@@ -179,24 +236,29 @@ const GameScreen = () => {
                 </AnimatePresence>
               </div>
 
-              {/* Mobile Controls */}
+              {/* Mobile Controls - FIXED */}
               <div className="lg:hidden p-3 bg-gray-900/80 border-t border-gray-700">
                 <div className="flex justify-center gap-6">
                   <motion.button
                     whileTap={{ scale: 0.9 }}
-                    className="px-8 py-4 bg-gray-800/90 rounded-xl text-2xl font-bold hover:bg-gray-700/90"
-                    onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }))}
+                    onTouchStart={() => simulateKeyPress('ArrowLeft')}
+                    onMouseDown={() => simulateKeyPress('ArrowLeft')}
+                    className="px-8 py-4 bg-gray-800/90 rounded-xl text-2xl font-bold hover:bg-gray-700/90 active:bg-gray-600 transition-colors"
                   >
                     ←
                   </motion.button>
                   <motion.button
                     whileTap={{ scale: 0.9 }}
-                    className="px-8 py-4 bg-gray-800/90 rounded-xl text-2xl font-bold hover:bg-gray-700/90"
-                    onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))}
+                    onTouchStart={() => simulateKeyPress('ArrowRight')}
+                    onMouseDown={() => simulateKeyPress('ArrowRight')}
+                    className="px-8 py-4 bg-gray-800/90 rounded-xl text-2xl font-bold hover:bg-gray-700/90 active:bg-gray-600 transition-colors"
                   >
                     →
                   </motion.button>
                 </div>
+                <p className="text-center text-xs text-gray-500 mt-2">
+                  Tap buttons to move the car
+                </p>
               </div>
             </div>
           </div>
@@ -223,7 +285,7 @@ const GameScreen = () => {
                     <FaGamepad className="text-blue-400 text-lg md:text-xl" />
                   </div>
                   <h3 className="text-lg md:text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                    🎮 HOW TO PLAY
+                    HOW TO PLAY
                   </h3>
                 </div>
                 <div className="space-y-3 md:space-y-4">
@@ -258,7 +320,7 @@ const GameScreen = () => {
                     <FaBook className="text-purple-400 text-lg md:text-xl" />
                   </div>
                   <h3 className="text-lg md:text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                    📝 GAME RULES
+                    GAME RULES
                   </h3>
                 </div>
                 <ul className="space-y-3 md:space-y-4">
@@ -280,7 +342,7 @@ const GameScreen = () => {
                       </div>
                       <div>
                         <span className="font-bold text-base md:text-lg text-white block mb-1">Score System</span>
-                        <p className="text-sm md:text-base text-gray-300">Earn 10 points for every second survived</p>
+                        <p className="text-sm md:text-base text-gray-300">Earn 1 point for every second survived</p>
                       </div>
                     </div>
                   </li>
@@ -291,7 +353,7 @@ const GameScreen = () => {
                       </div>
                       <div>
                         <span className="font-bold text-base md:text-lg text-white block mb-1">Level Progression</span>
-                        <p className="text-sm md:text-base text-gray-300">Cars speed up every 30 seconds</p>
+                        <p className="text-sm md:text-base text-gray-300">Game level increases every 20 seconds</p>
                       </div>
                     </div>
                   </li>
@@ -316,7 +378,7 @@ const GameScreen = () => {
                     <FaLightbulb className="text-yellow-400 text-lg md:text-xl" />
                   </div>
                   <h3 className="text-lg md:text-xl font-bold bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">
-                    💡 PRO TIPS
+                    PRO TIPS
                   </h3>
                 </div>
                 <div className="space-y-3 md:space-y-4">
@@ -347,6 +409,9 @@ const GameScreen = () => {
           <div className="max-w-6xl mx-auto text-center">
             <p className="text-sm md:text-base text-gray-400">
               Car Avoidance Game • Use ← → arrow keys to move • SPACE to pause/resume • ESC to pause
+            </p>
+            <p className="text-xs text-gray-600 mt-1">
+              On mobile: Use the buttons below the game screen
             </p>
           </div>
         </div>

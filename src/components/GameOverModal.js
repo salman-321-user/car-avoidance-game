@@ -5,7 +5,7 @@ import { useGame } from '../contexts/GameContext';
 import { FaTrophy, FaRedo, FaHome, FaMedal } from 'react-icons/fa';
 
 const GameOverModal = () => {
-  const { gameState, score, level, highScore, startGame } = useGame();
+  const { gameState, score, level, highScore, startGame, resetGame } = useGame(); // Add resetGame
   const { userProfile } = useAuth();
   const hasShownRef = useRef(false);
 
@@ -21,6 +21,12 @@ const GameOverModal = () => {
       hasShownRef.current = false;
     }
   }, [gameState]);
+
+  // Function to handle Main Menu navigation
+  const handleMainMenu = () => {
+    // Reset the game state to idle
+    resetGame();
+  };
 
   if (gameState !== 'game-over') return null;
 
@@ -104,6 +110,7 @@ const GameOverModal = () => {
             
             <div className="grid grid-cols-2 gap-3">
               <motion.button
+                type="button"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={startGame}
@@ -113,14 +120,16 @@ const GameOverModal = () => {
                 Play Again
               </motion.button>
               
+              {/* Updated Main Menu button */}
               <motion.button
+                type="button"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => window.location.reload()}
+                onClick={handleMainMenu}
                 className="flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-600 p-3 rounded-lg font-bold text-sm"
               >
                 <FaHome />
-                Main Menu
+                Home
               </motion.button>
             </div>
           </div>

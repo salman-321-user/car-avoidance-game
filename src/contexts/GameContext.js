@@ -6,13 +6,10 @@ import {
   orderBy, 
   limit, 
   onSnapshot, 
-  addDoc,
   doc,
   getDoc,
   setDoc,
-  serverTimestamp,
-  getDocs,
-  where
+  updateDoc // Added this import
 } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 
@@ -129,14 +126,64 @@ export const GameProvider = ({ children }) => {
     }
   };
 
+  const resetGame = () => {
+    setGameState('idle');
+    setScore(0);
+    setLevel(1);
+    setGameSpeed(1);
+  };
+
   const updateScore = (newScore) => {
     setScore(newScore);
     
-    // Level up every 30 seconds
-    const newLevel = Math.floor(newScore / 30) + 1;
+    // Level up every 20 points (changed from 30)
+    const newLevel = Math.floor(newScore / 20) + 1;
     if (newLevel > level) {
       setLevel(newLevel);
+      // Increase game speed with each level
       setGameSpeed(1 + (newLevel - 1) * 0.5);
+    }
+  };
+
+  // Function to update avatar in scores collection when profile changes
+  const updateScoreAvatar = async (newAvatar) => {
+    if (!currentUser) return;
+    
+    try {
+      const scoreDocRef = doc(db, 'scores', currentUser.uid);
+      const scoreDoc = await getDoc(scoreDocRef);
+      
+      if (scoreDoc.exists()) {
+        // Update only the playerAvatar field
+        await updateDoc(scoreDocRef, {
+          playerAvatar: newAvatar
+        });
+        console.log("Score document avatar updated successfully");
+      }
+    } catch (error) {
+      console.error("Error updating score document avatar:", error);
+      // Don't throw error - we don't want to fail the main operation
+    }
+  };
+
+  // Function to update player name in scores collection when profile changes
+  const updateScoreName = async (newName) => {
+    if (!currentUser) return;
+    
+    try {
+      const scoreDocRef = doc(db, 'scores', currentUser.uid);
+      const scoreDoc = await getDoc(scoreDocRef);
+      
+      if (scoreDoc.exists()) {
+        // Update only the playerName field
+        await updateDoc(scoreDocRef, {
+          playerName: newName
+        });
+        console.log("Score document player name updated successfully");
+      }
+    } catch (error) {
+      console.error("Error updating score document player name:", error);
+      // Don't throw error - we don't want to fail the main operation
     }
   };
 
@@ -167,7 +214,7 @@ export const GameProvider = ({ children }) => {
       const scoreData = {
         playerId: currentUser.uid,
         playerName: userProfile.displayName || 'Anonymous',
-        playerAvatar: userProfile.photoURL || '👤',
+        playerAvatar: userProfile.photoURL || '👤', // This uses the current avatar from userProfile
         score: score,
         timestamp: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -213,8 +260,11 @@ export const GameProvider = ({ children }) => {
     pauseGame,
     resumeGame,
     endGame,
+    resetGame,
     updateScore,
     saveScore,
+    updateScoreAvatar, // Export this function so it can be used elsewhere
+    updateScoreName,   // Export this function so it can be used elsewhere
   };
 
   return (
