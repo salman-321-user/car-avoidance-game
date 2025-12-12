@@ -52,7 +52,7 @@ const GameCanvas = () => {
         setIsInitialized(true);
       }
     }
-  }, [gameState]);
+  }, [gameState, isInitialized]);
 
   // Handle keyboard controls - IMPORTANT: This needs to capture ALL keyboard events
   useEffect(() => {
