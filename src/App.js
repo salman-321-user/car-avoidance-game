@@ -9,7 +9,7 @@ import GameScreen from './pages/GameScreen';
 
 function App() {
   return (
-    <BrowserRouter basename={process.env.PUBLIC_URL}>
+    <BrowserRouter basename="/car-avoidance-game">
       <AuthProvider>
         <GameProvider>
           <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white">
