@@ -30,6 +30,9 @@ const GameCanvas = () => {
   const [lastSpawnTime, setLastSpawnTime] = useState(0);
   const [lastScoreTime, setLastScoreTime] = useState(Date.now());
   const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Ref to track last move time for debouncing
+  const lastMoveTime = useRef(0);
 
   // Load images
   const playerImg = useRef(new Image());
@@ -54,16 +57,25 @@ const GameCanvas = () => {
     }
   }, [gameState, isInitialized]);
 
-  // Handle keyboard controls - IMPORTANT: This needs to capture ALL keyboard events
+  // Handle keyboard controls with debouncing
   useEffect(() => {
     const handleKeyDown = (e) => {
       // Allow movement even when paused
       if (gameState === 'playing' || gameState === 'paused') {
+        const now = Date.now();
+        
+        // Debounce to prevent rapid movement
+        if (now - lastMoveTime.current < 100) { // 100ms minimum between moves
+          return;
+        }
+        
         if (e.key === 'ArrowLeft') {
           setPlayerPosition(prev => Math.max(0, prev - 1));
+          lastMoveTime.current = now;
           e.preventDefault(); // Prevent default browser behavior
         } else if (e.key === 'ArrowRight') {
           setPlayerPosition(prev => Math.min(ROAD_COLUMNS - 1, prev + 1));
+          lastMoveTime.current = now;
           e.preventDefault(); // Prevent default browser behavior
         }
       }

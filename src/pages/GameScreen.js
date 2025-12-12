@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,7 +12,9 @@ const GameScreen = () => {
   const navigate = useNavigate();
   const { userProfile } = useAuth();
   const { gameState, score, level, startGame, pauseGame, resumeGame } = useGame();
-  const [mobileDirection, setMobileDirection] = useState(null);
+  
+  // Ref to track last press time for debouncing
+  const lastPressTime = useRef(0);
 
   // Handle keyboard controls
   useEffect(() => {
@@ -62,8 +64,15 @@ const GameScreen = () => {
     return displayName.length > 15 ? `${displayName.slice(0, 15)}...` : displayName;
   };
 
-  // Function to simulate keyboard events for mobile controls
+  // Function to simulate keyboard events for mobile controls with debouncing
   const simulateKeyPress = (key) => {
+    // Prevent rapid multiple presses (debounce)
+    const now = Date.now();
+    if (now - lastPressTime.current < 200) { // 200ms delay between presses
+      return;
+    }
+    lastPressTime.current = now;
+    
     // Create and dispatch a proper keyboard event
     const event = new KeyboardEvent('keydown', {
       key: key,
@@ -89,7 +98,7 @@ const GameScreen = () => {
         view: window
       });
       window.dispatchEvent(keyupEvent);
-    }, 100);
+    }, 150);
   };
 
   return (
@@ -138,7 +147,7 @@ const GameScreen = () => {
                     className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg text-sm md:text-base font-bold hover:opacity-90"
                   >
                     <FaPlay className="text-sm" />
-                    <span>{gameState === 'game-over' ? 'PLAY AGAIN' : 'START GAME'}</span>
+                    <span>{gameState === 'game-over' ? 'PLAY AGAIN' : 'START'}</span>
                   </motion.button>
                 ) : gameState === 'paused' ? (
                   <motion.button
@@ -236,28 +245,44 @@ const GameScreen = () => {
                 </AnimatePresence>
               </div>
 
-              {/* Mobile Controls - FIXED */}
+              {/* Mobile Controls - FIXED (No double trigger) */}
               <div className="lg:hidden p-3 bg-gray-900/80 border-t border-gray-700">
                 <div className="flex justify-center gap-6">
                   <motion.button
                     whileTap={{ scale: 0.9 }}
-                    onTouchStart={() => simulateKeyPress('ArrowLeft')}
-                    onMouseDown={() => simulateKeyPress('ArrowLeft')}
-                    className="px-8 py-4 bg-gray-800/90 rounded-xl text-2xl font-bold hover:bg-gray-700/90 active:bg-gray-600 transition-colors"
+                    onTouchStart={(e) => {
+                      e.preventDefault();
+                      simulateKeyPress('ArrowLeft');
+                    }}
+                    onMouseDown={(e) => {
+                      // For desktop testing without mobile emulation
+                      if (!('ontouchstart' in window)) {
+                        simulateKeyPress('ArrowLeft');
+                      }
+                    }}
+                    className="px-8 py-4 bg-gray-800/90 rounded-xl text-2xl font-bold hover:bg-gray-700/90 active:bg-gray-600 transition-colors select-none touch-manipulation"
                   >
                     ←
                   </motion.button>
                   <motion.button
                     whileTap={{ scale: 0.9 }}
-                    onTouchStart={() => simulateKeyPress('ArrowRight')}
-                    onMouseDown={() => simulateKeyPress('ArrowRight')}
-                    className="px-8 py-4 bg-gray-800/90 rounded-xl text-2xl font-bold hover:bg-gray-700/90 active:bg-gray-600 transition-colors"
+                    onTouchStart={(e) => {
+                      e.preventDefault();
+                      simulateKeyPress('ArrowRight');
+                    }}
+                    onMouseDown={(e) => {
+                      // For desktop testing without mobile emulation
+                      if (!('ontouchstart' in window)) {
+                        simulateKeyPress('ArrowRight');
+                      }
+                    }}
+                    className="px-8 py-4 bg-gray-800/90 rounded-xl text-2xl font-bold hover:bg-gray-700/90 active:bg-gray-600 transition-colors select-none touch-manipulation"
                   >
                     →
                   </motion.button>
                 </div>
                 <p className="text-center text-xs text-gray-500 mt-2">
-                  Tap buttons to move the car
+                  Tap buttons to move the car (one tap = one move)
                 </p>
               </div>
             </div>
