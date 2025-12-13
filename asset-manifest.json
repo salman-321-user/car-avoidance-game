@@ -1,13 +1,13 @@
 {
   "files": {
-    "main.css": "/car-avoidance-game/static/css/main.89df8deb.css",
-    "main.js": "/car-avoidance-game/static/js/main.d4673ef6.js",
+    "main.css": "/car-avoidance-game/static/css/main.74432edf.css",
+    "main.js": "/car-avoidance-game/static/js/main.9ec73bd2.js",
     "index.html": "/car-avoidance-game/index.html",
-    "main.89df8deb.css.map": "/car-avoidance-game/static/css/main.89df8deb.css.map",
-    "main.d4673ef6.js.map": "/car-avoidance-game/static/js/main.d4673ef6.js.map"
+    "main.74432edf.css.map": "/car-avoidance-game/static/css/main.74432edf.css.map",
+    "main.9ec73bd2.js.map": "/car-avoidance-game/static/js/main.9ec73bd2.js.map"
   },
   "entrypoints": [
-    "static/css/main.89df8deb.css",
-    "static/js/main.d4673ef6.js"
+    "static/css/main.74432edf.css",
+    "static/js/main.9ec73bd2.js"
   ]
 }
