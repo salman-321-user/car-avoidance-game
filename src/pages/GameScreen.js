@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -13,25 +13,6 @@ const GameScreen = () => {
   const { userProfile } = useAuth();
   const { gameState, score, level, startGame, pauseGame, resumeGame } = useGame();
   
-  // Ref to track last press time for debouncing
-  const lastPressTime = useRef(0);
-
-  // Handle keyboard controls
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (gameState === 'playing') {
-        if (e.key === 'Escape' || e.key === ' ') {
-          pauseGame();
-        }
-      } else if (gameState === 'paused' && e.key === ' ') {
-        resumeGame();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [gameState, pauseGame, resumeGame]);
-
   // Function to check if photoURL is a base64 image
   const isBase64Image = (url) => {
     return typeof url === 'string' && url.startsWith('data:image');
@@ -64,42 +45,66 @@ const GameScreen = () => {
     return displayName.length > 15 ? `${displayName.slice(0, 15)}...` : displayName;
   };
 
-  // Function to simulate keyboard events for mobile controls with debouncing
-  const simulateKeyPress = (key) => {
-    // Prevent rapid multiple presses (debounce)
-    const now = Date.now();
-    if (now - lastPressTime.current < 200) { // 200ms delay between presses
-      return;
-    }
-    lastPressTime.current = now;
-    
-    // Create and dispatch a proper keyboard event
-    const event = new KeyboardEvent('keydown', {
-      key: key,
-      code: `Arrow${key === 'ArrowLeft' ? 'Left' : 'Right'}`,
-      keyCode: key === 'ArrowLeft' ? 37 : 39,
-      which: key === 'ArrowLeft' ? 37 : 39,
-      bubbles: true,
-      cancelable: true,
-      view: window
-    });
-    
-    window.dispatchEvent(event);
-    
-    // Also trigger a keyup event after a short delay for better responsiveness
-    setTimeout(() => {
-      const keyupEvent = new KeyboardEvent('keyup', {
-        key: key,
-        code: `Arrow${key === 'ArrowLeft' ? 'Left' : 'Right'}`,
-        keyCode: key === 'ArrowLeft' ? 37 : 39,
-        which: key === 'ArrowLeft' ? 37 : 39,
+  // Function to simulate keyboard events with better mobile support
+  const simulateKeyPress = useCallback((key) => {
+    // Direct state update for mobile - more reliable than keyboard events
+    if (key === 'ArrowLeft') {
+      // Create a custom event that GameCanvas can listen for
+      const event = new CustomEvent('gameMove', { 
+        detail: { direction: 'left' },
+        bubbles: true,
+        cancelable: true
+      });
+      window.dispatchEvent(event);
+      
+      // Also dispatch keyboard event for compatibility
+      const keyboardEvent = new KeyboardEvent('keydown', {
+        key: 'ArrowLeft',
+        code: 'ArrowLeft',
+        keyCode: 37,
+        which: 37,
         bubbles: true,
         cancelable: true,
         view: window
       });
-      window.dispatchEvent(keyupEvent);
-    }, 150);
-  };
+      window.dispatchEvent(keyboardEvent);
+      
+    } else if (key === 'ArrowRight') {
+      const event = new CustomEvent('gameMove', { 
+        detail: { direction: 'right' },
+        bubbles: true,
+        cancelable: true
+      });
+      window.dispatchEvent(event);
+      
+      const keyboardEvent = new KeyboardEvent('keydown', {
+        key: 'ArrowRight',
+        code: 'ArrowRight',
+        keyCode: 39,
+        which: 39,
+        bubbles: true,
+        cancelable: true,
+        view: window
+      });
+      window.dispatchEvent(keyboardEvent);
+    }
+  }, []);
+
+  // Handle keyboard controls
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (gameState === 'playing') {
+        if (e.key === 'Escape' || e.key === ' ') {
+          pauseGame();
+        }
+      } else if (gameState === 'paused' && e.key === ' ') {
+        resumeGame();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [gameState, pauseGame, resumeGame]);
 
   return (
     <div className="h-screen overflow-y-auto bg-gray-900">
@@ -245,44 +250,46 @@ const GameScreen = () => {
                 </AnimatePresence>
               </div>
 
-              {/* Mobile Controls - FIXED (No double trigger) */}
+              {/* Mobile Controls - UPDATED (Direct state control) */}
               <div className="lg:hidden p-3 bg-gray-900/80 border-t border-gray-700">
                 <div className="flex justify-center gap-6">
                   <motion.button
-                    whileTap={{ scale: 0.9 }}
+                    whileTap={{ scale: 0.85 }}
                     onTouchStart={(e) => {
+                      e.preventDefault();
+                      // Direct movement - no debouncing
+                      simulateKeyPress('ArrowLeft');
+                    }}
+                    onTouchEnd={(e) => e.preventDefault()}
+                    onMouseDown={(e) => {
                       e.preventDefault();
                       simulateKeyPress('ArrowLeft');
                     }}
-                    onMouseDown={(e) => {
-                      // For desktop testing without mobile emulation
-                      if (!('ontouchstart' in window)) {
-                        simulateKeyPress('ArrowLeft');
-                      }
-                    }}
-                    className="px-8 py-4 bg-gray-800/90 rounded-xl text-2xl font-bold hover:bg-gray-700/90 active:bg-gray-600 transition-colors select-none touch-manipulation"
+                    className="px-10 py-5 bg-gradient-to-br from-blue-700/90 to-blue-800/90 rounded-xl text-3xl font-bold hover:bg-blue-600/90 active:bg-blue-500 transition-colors select-none touch-manipulation active:scale-95 shadow-lg"
+                    style={{ touchAction: 'manipulation' }}
                   >
                     ←
                   </motion.button>
                   <motion.button
-                    whileTap={{ scale: 0.9 }}
+                    whileTap={{ scale: 0.85 }}
                     onTouchStart={(e) => {
+                      e.preventDefault();
+                      // Direct movement - no debouncing
+                      simulateKeyPress('ArrowRight');
+                    }}
+                    onTouchEnd={(e) => e.preventDefault()}
+                    onMouseDown={(e) => {
                       e.preventDefault();
                       simulateKeyPress('ArrowRight');
                     }}
-                    onMouseDown={(e) => {
-                      // For desktop testing without mobile emulation
-                      if (!('ontouchstart' in window)) {
-                        simulateKeyPress('ArrowRight');
-                      }
-                    }}
-                    className="px-8 py-4 bg-gray-800/90 rounded-xl text-2xl font-bold hover:bg-gray-700/90 active:bg-gray-600 transition-colors select-none touch-manipulation"
+                    className="px-10 py-5 bg-gradient-to-br from-green-700/90 to-green-800/90 rounded-xl text-3xl font-bold hover:bg-green-600/90 active:bg-green-500 transition-colors select-none touch-manipulation active:scale-95 shadow-lg"
+                    style={{ touchAction: 'manipulation' }}
                   >
                     →
                   </motion.button>
                 </div>
-                <p className="text-center text-xs text-gray-500 mt-2">
-                  Tap buttons to move the car (one tap = one move)
+                <p className="text-center text-xs text-gray-400 mt-2">
+                  Tap buttons to move - Rapid taps work!
                 </p>
               </div>
             </div>

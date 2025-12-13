@@ -57,34 +57,62 @@ const GameCanvas = () => {
     }
   }, [gameState, isInitialized]);
 
-  // Handle keyboard controls with debouncing
+  // Handle keyboard controls with better mobile support
   useEffect(() => {
     const handleKeyDown = (e) => {
       // Allow movement even when paused
       if (gameState === 'playing' || gameState === 'paused') {
         const now = Date.now();
         
-        // Debounce to prevent rapid movement
-        if (now - lastMoveTime.current < 100) { // 100ms minimum between moves
+        // Reduced debouncing for better responsiveness
+        if (now - lastMoveTime.current < 50) { // Reduced from 100ms to 50ms
           return;
         }
         
         if (e.key === 'ArrowLeft') {
-          setPlayerPosition(prev => Math.max(0, prev - 1));
+          setPlayerPosition(prev => {
+            const newPos = Math.max(0, prev - 1);
+            return newPos;
+          });
           lastMoveTime.current = now;
-          e.preventDefault(); // Prevent default browser behavior
+          e.preventDefault();
         } else if (e.key === 'ArrowRight') {
-          setPlayerPosition(prev => Math.min(ROAD_COLUMNS - 1, prev + 1));
+          setPlayerPosition(prev => {
+            const newPos = Math.min(ROAD_COLUMNS - 1, prev + 1);
+            return newPos;
+          });
           lastMoveTime.current = now;
-          e.preventDefault(); // Prevent default browser behavior
+          e.preventDefault();
         }
       }
     };
     
     // Add event listener with capture phase to catch all events
-    window.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
     
-    return () => window.removeEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
+  }, [gameState]);
+
+  // Add custom event listener for mobile controls
+  useEffect(() => {
+    const handleGameMove = (e) => {
+      if (gameState === 'playing' || gameState === 'paused') {
+        const now = Date.now();
+        if (now - lastMoveTime.current < 50) return;
+        
+        if (e.detail.direction === 'left') {
+          setPlayerPosition(prev => Math.max(0, prev - 1));
+          lastMoveTime.current = now;
+        } else if (e.detail.direction === 'right') {
+          setPlayerPosition(prev => Math.min(ROAD_COLUMNS - 1, prev + 1));
+          lastMoveTime.current = now;
+        }
+      }
+    };
+    
+    window.addEventListener('gameMove', handleGameMove);
+    
+    return () => window.removeEventListener('gameMove', handleGameMove);
   }, [gameState]);
 
   // Spawn obstacles with dynamic rate based on level
