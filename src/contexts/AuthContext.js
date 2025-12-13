@@ -3,7 +3,8 @@ import {
   signInWithPopup, 
   signOut, 
   onAuthStateChanged,
-  deleteUser
+  deleteUser,
+  reauthenticateWithPopup // Add this import
 } from 'firebase/auth';
 import { auth, googleProvider } from '../firebase';
 import { doc, getDoc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
@@ -17,6 +18,7 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [needsReauth, setNeedsReauth] = useState(false); // New state for re-auth
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -55,6 +57,20 @@ export const AuthProvider = ({ children }) => {
       return user;
     } catch (error) {
       console.error("Google login error:", error);
+      throw error;
+    }
+  };
+
+  // Add re-authentication function
+  const reauthenticateWithGoogle = async () => {
+    if (!currentUser) return;
+    
+    try {
+      await reauthenticateWithPopup(currentUser, googleProvider);
+      setNeedsReauth(false);
+      return true;
+    } catch (error) {
+      console.error("Re-authentication error:", error);
       throw error;
     }
   };
@@ -116,6 +132,11 @@ export const AuthProvider = ({ children }) => {
     try {
       const uid = currentUser.uid;
       
+      // Check if we need re-authentication
+      if (needsReauth) {
+        throw new Error('REAUTH_REQUIRED');
+      }
+      
       // 1. Delete user profile from Firestore
       await deleteDoc(doc(db, 'users', uid));
       
@@ -139,8 +160,9 @@ export const AuthProvider = ({ children }) => {
       console.error("Error deleting account:", error);
       
       // If user needs to re-authenticate before deletion
-      if (error.code === 'auth/requires-recent-login') {
-        throw new Error('Please re-login and try again to delete your account.');
+      if (error.code === 'auth/requires-recent-login' || error.message === 'REAUTH_REQUIRED') {
+        setNeedsReauth(true);
+        throw new Error('REAUTH_REQUIRED');
       }
       throw error;
     }
@@ -150,9 +172,12 @@ export const AuthProvider = ({ children }) => {
     currentUser,
     userProfile,
     loginWithGoogle,
+    reauthenticateWithGoogle, // Add this to context value
     logout,
     updateUserProfile,
     deleteAccount,
+    needsReauth,
+    setNeedsReauth,
     loading
   };
 

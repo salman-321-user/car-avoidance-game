@@ -1,4 +1,4 @@
-import { FaUser, FaCheck, FaTrash, FaUpload, FaTimes, FaChevronLeft, FaChevronRight, FaSpinner } from 'react-icons/fa';
+import { FaUser, FaCheck, FaTrash, FaUpload, FaTimes, FaChevronLeft, FaChevronRight, FaSpinner, FaGoogle, FaExclamationTriangle } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -6,7 +6,9 @@ import { useAuth } from '../contexts/AuthContext';
 
 const ProfileSetup = () => {
   const navigate = useNavigate();
-  const { userProfile, updateUserProfile, deleteAccount } = useAuth();
+  // UPDATED: Include reauthenticateWithGoogle from useAuth
+  const { userProfile, updateUserProfile, deleteAccount, reauthenticateWithGoogle } = useAuth(); 
+  
   const [displayName, setDisplayName] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState('');
   const [uploadedImage, setUploadedImage] = useState(null);
@@ -17,6 +19,7 @@ const ProfileSetup = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false); // New state for update loading
   const [currentEmojiPage, setCurrentEmojiPage] = useState(0);
+  const [needsReauth, setNeedsReauth] = useState(false); // NEW STATE
   const fileInputRef = useRef(null);
 
   const avatars = [
@@ -224,20 +227,32 @@ const ProfileSetup = () => {
     }
   };
 
+  // UPDATED: handleDeleteAccount function to handle REAUTH_REQUIRED error
   const handleDeleteAccount = async () => {
     if (!window.confirm('Are you sure you want to delete your account? All your data will be lost.')) return;
+    
+    if (needsReauth) {
+      if (!window.confirm('For security, you need to re-authenticate with Google before deleting your account. Continue?')) return;
+    }
+    
     setIsDeleting(true);
     try {
       await deleteAccount();
       navigate('/');
     } catch (error) {
-      alert(error.message || 'Failed to delete account. Please try again.');
-      console.error(error);
+      if (error.message === 'REAUTH_REQUIRED') {
+        setNeedsReauth(true);
+        alert('For security reasons, please re-authenticate with Google to delete your account.');
+      } else {
+        alert(error.message || 'Failed to delete account. Please try again.');
+        console.error(error);
+      }
     } finally {
       setIsDeleting(false);
       setShowDeleteConfirm(false);
     }
   };
+  // END UPDATED handleDeleteAccount
 
   // Handle cross button click
   const handleCrossClick = () => {
@@ -319,6 +334,41 @@ const ProfileSetup = () => {
                 </div>
               </motion.div>
             )}
+
+            {/* Re-authentication Required Message - NEW BLOCK */}
+            {needsReauth && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-4 p-3 bg-yellow-900/30 border border-yellow-700 rounded-lg"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <FaExclamationTriangle className="text-yellow-400" />
+                  <p className="text-yellow-400 font-medium">Re-authentication Required</p>
+                </div>
+                <p className="text-sm text-yellow-300 mb-3">
+                  You need to re-authenticate with Google to delete your account.
+                </p>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={async () => {
+                    try {
+                      await reauthenticateWithGoogle();
+                      setNeedsReauth(false);
+                      alert('Re-authenticated successfully! You can now delete your account.');
+                    } catch (error) {
+                      alert('Failed to re-authenticate: ' + error.message);
+                    }
+                  }}
+                  className="w-full flex items-center justify-center gap-2 bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded-lg font-bold"
+                >
+                  <FaGoogle />
+                  Re-authenticate with Google
+                </motion.button>
+              </motion.div>
+            )}
+            {/* END NEW BLOCK */}
 
             {/* Status Indicator */}
             {!isFormComplete() && (
@@ -597,6 +647,37 @@ const ProfileSetup = () => {
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="bg-gray-800 p-6 rounded-lg max-w-sm w-full mx-4 border border-red-500">
               <h3 className="text-xl font-bold text-red-500 mb-3">Delete Account</h3>
+              {/* RE-AUTH STATUS INSIDE MODAL */}
+              {needsReauth && (
+                <div className="mb-4 p-3 bg-yellow-900/30 border border-yellow-700 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FaExclamationTriangle className="text-yellow-400" />
+                    <p className="text-yellow-400 font-medium">Re-authentication Required</p>
+                  </div>
+                  <p className="text-sm text-yellow-300 mb-3">
+                    You need to re-authenticate with Google to delete your account.
+                  </p>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={async () => {
+                      try {
+                        await reauthenticateWithGoogle();
+                        setNeedsReauth(false);
+                        alert('Re-authenticated successfully! You can now delete your account.');
+                      } catch (error) {
+                        alert('Failed to re-authenticate: ' + error.message);
+                      }
+                    }}
+                    className="w-full flex items-center justify-center gap-2 bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded-lg font-bold"
+                  >
+                    <FaGoogle />
+                    Re-authenticate with Google
+                  </motion.button>
+                </div>
+              )}
+              {/* END RE-AUTH STATUS */}
+
               <p className="text-gray-300 mb-4">
                 Are you sure you want to delete your account? This action cannot be undone.
               </p>
